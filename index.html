@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ContractShield AI</title>
+  <style>
+    body { font-family: Arial; background:#0b0f19; color:white; padding:20px; }
+    .box { max-width:900px; margin:auto; background:#121a2a; padding:20px; border-radius:16px; }
+    textarea { width:100%; height:180px; padding:12px; border-radius:10px; border:none; outline:none; }
+    button { padding:12px 16px; border:none; border-radius:10px; cursor:pointer; margin-top:10px; }
+    .btn { background:#38bdf8; font-weight:bold; }
+    pre { white-space:pre-wrap; background:#0a1224; padding:14px; border-radius:12px; margin-top:12px; }
+    .tag { padding:4px 8px; border-radius:8px; font-size:12px; font-weight:bold; }
+    .red { background:#ff4d4d; color:white; }
+    .yellow { background:#ffd84d; color:black; }
+    .green { background:#2bd576; color:black; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>🛡️ ContractShield AI</h1>
+    <p>Paste any contract / offer letter / terms & conditions and get risk analysis instantly.</p>
+
+    <textarea id="contractText" placeholder="Paste contract text here..."></textarea>
+    <br>
+    <button class="btn" onclick="analyze()">Analyze Contract</button>
+
+    <div id="output"></div>
+  </div>
+
+<script>
+async function analyze(){
+  const text = document.getElementById("contractText").value;
+  const out = document.getElementById("output");
+  out.innerHTML = "<p>⏳ Analyzing...</p>";
+
+  try {
+    const res = await fetch("https://contractshield-backend.onrender.com/analyze", {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({text})
+    });
+
+    const data = await res.json();
+
+    if(data.error){
+      out.innerHTML = "<p style='color:red;'>❌ " + data.error + "</p>";
+      return;
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(data.result);
+    } catch(e){
+      out.innerHTML = "<h3>Raw Output</h3><pre>" + data.result + "</pre>";
+      return;
+    }
+
+    let html = "<h2>✅ Summary</h2><ul>";
+    parsed.summary.forEach(s => html += "<li>" + s + "</li>");
+    html += "</ul>";
+
+    html += "<h2>🚨 Risk Flags</h2>";
+    parsed.risk_flags.forEach(r => {
+      let c = r.severity.toLowerCase();
+      html += `
+        <div style="background:#0a1224; padding:12px; border-radius:12px; margin-bottom:10px;">
+          <span class="tag ${c}">${r.severity}</span>
+          <h3>${r.title}</h3>
+          <p><b>Reason:</b> ${r.reason}</p>
+          <p><b>Suggested Fix:</b> ${r.suggested_fix}</p>
+        </div>
+      `;
+    });
+
+    html += "<h2>🗣️ Negotiation Points</h2><ul>";
+    parsed.negotiation_points.forEach(p => html += "<li>" + p + "</li>");
+    html += "</ul>";
+
+    out.innerHTML = html;
+
+  } catch(err){
+    out.innerHTML = "<p style='color:red;'>❌ " + err + "</p>";
+  }
+}
+</script>
+</body>
+</html>
